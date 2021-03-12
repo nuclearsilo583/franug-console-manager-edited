@@ -21,13 +21,13 @@
 #include <sdktools>
 #include <multicolors>
 #include <geoip>
-#include <emitsoundany>
+//#include <emitsoundany>
 //#include <csgocolors_fix>
 #include <clientprefs>
 
 #pragma newdecls required // let's go new syntax! 
 
-#define VERSION "1.3.0"
+#define VERSION "1.5.0"
 
 Handle kv;
 char Path[PLATFORM_MAX_PATH];
@@ -35,7 +35,10 @@ float x=0.2;
 int j=0;
 bool csgo;
 
+int		g_iVolume[MAXPLAYERS + 1] = {100, ...};
+
 Handle g_hConsoleSoundCookie;
+Handle g_hConsoleCookie_Volume = INVALID_HANDLE;
 bool g_bConsoleSound[MAXPLAYERS + 1];
 
 public Plugin myinfo = 
@@ -53,9 +56,15 @@ public void OnPluginStart()
 	
 	RegConsoleCmd("say", SayConsole);
 	
-	g_hConsoleSoundCookie = RegClientCookie("Console_Sound", "Console Sound", CookieAccess_Protected);
+	LoadTranslations("console_phrase.phrases");
 	
-	SetCookieMenuItem(PrefMenu, 0, "");
+	RegConsoleCmd("sm_console", Command_Console, "Brings up the console menu");
+	
+	g_hConsoleSoundCookie = RegClientCookie("Console_Sound", "Console Sound", CookieAccess_Private);
+	g_hConsoleCookie_Volume	= RegClientCookie("cookie_map_music_volume", "Disable Map Music Volume", CookieAccess_Private);
+	SetCookieMenuItem(ItemCookieMenu, 0, "Console Volume Control");
+	
+	//SetCookieMenuItem(PrefMenu, 0, "");
 	//SetCookiePrefabMenu(g_hConsoleSoundCookie,CookieMenu_OnOff_Int,"Console_Sound", PrefMenu);
 	
 }
@@ -64,11 +73,98 @@ public void OnClientCookiesCached(int client)
 {
     char sValue[8];
     GetClientCookie(client, g_hConsoleSoundCookie, sValue, sizeof(sValue));
-    
-    g_bConsoleSound[client] = (sValue[0] != '\0' && StringToInt(sValue));
+	
+	g_bConsoleSound[client] = (sValue[0] != '\0' && StringToInt(sValue));
+	//g_bConsoleSound[client] = view_as<bool>(StringToInt(sValue));
+	
+	GetClientCookie(client, g_hConsoleCookie_Volume, sValue, sizeof(sValue));
+	if(StrEqual(sValue,""))
+	{
+		SetClientCookie(client, g_hConsoleCookie_Volume, "100");
+		strcopy(sValue, sizeof(sValue), "100");
+	}
+	g_iVolume[client] = StringToInt(sValue);
 	//g_bAutoRetry[client] = GetClientCookie(client);
 } 
 
+public void ItemCookieMenu(int iClient, CookieMenuAction hAction, any Info, char[] sBuffer, int iMaxlen)
+{
+	switch(hAction)
+	{
+		case CookieMenuAction_DisplayOption: FormatEx(sBuffer, iMaxlen, "Console Volume Control", iClient);
+		case CookieMenuAction_SelectOption: ConsoleMenu(iClient);
+	}
+}
+
+void ConsoleMenu(int iClient)
+{
+	Menu hMenu = CreateMenu(ConsoleMenuHandler, MENU_ACTIONS_DEFAULT);
+
+	char sMenuTranslate[256];
+	FormatEx(sMenuTranslate, sizeof(sMenuTranslate), "%T %T", "Console Tag Menu", iClient, "Console Menu Title", iClient);
+	hMenu.SetTitle(sMenuTranslate);
+	hMenu.ExitBackButton = true;
+	
+	FormatEx(sMenuTranslate, sizeof(sMenuTranslate), "%T \n%T", "Console Menu Music", iClient, g_bConsoleSound[iClient] ? "Console Disabled" : "Console Enabled", iClient, "Console Menu AdjustDesc", iClient);
+	hMenu.AddItem(g_bConsoleSound[iClient] ? "enable" : "disable", sMenuTranslate);
+
+	FormatEx(sMenuTranslate, sizeof(sMenuTranslate), "%T", "Console Menu Vol", iClient, g_iVolume[iClient]);
+
+	switch(g_iVolume[iClient])
+	{
+		case 100:	hMenu.AddItem("vol_90", sMenuTranslate);
+		case 90:	hMenu.AddItem("vol_80", sMenuTranslate);
+		case 80:	hMenu.AddItem("vol_70", sMenuTranslate);
+		case 70:	hMenu.AddItem("vol_60", sMenuTranslate);
+		case 60:	hMenu.AddItem("vol_50", sMenuTranslate);
+		case 50:	hMenu.AddItem("vol_40", sMenuTranslate);
+		case 40:	hMenu.AddItem("vol_30", sMenuTranslate);
+		case 30:	hMenu.AddItem("vol_20", sMenuTranslate);
+		case 20:	hMenu.AddItem("vol_10", sMenuTranslate);
+		case 10:	hMenu.AddItem("vol_5", sMenuTranslate);
+		case 5:		hMenu.AddItem("vol_100", sMenuTranslate);
+		default:	hMenu.AddItem("vol_100", sMenuTranslate);
+	}
+	hMenu.Display(iClient, MENU_TIME_FOREVER);
+}
+
+public int ConsoleMenuHandler(Menu hMenu, MenuAction hAction, int iClient, int iParam2)
+{
+	switch(hAction)
+	{
+		case MenuAction_End: delete hMenu;
+		case MenuAction_Cancel: if(iParam2 == MenuCancel_ExitBack) ShowCookieMenu(iClient);
+		case MenuAction_Select:
+		{
+			char sOption[8];
+			hMenu.GetItem(iParam2, sOption, sizeof(sOption));
+			if(StrEqual(sOption, "disable"))
+			{
+				g_bConsoleSound[iClient] = true;
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Disable");
+				SetClientCookie(iClient, g_hConsoleSoundCookie, "1");
+				//Client_StopSound(iClient);
+			}else if(StrEqual(sOption, "enable"))
+			{
+				//if(g_bConsoleSound[iClient]) Client_UpdateMusics(iClient);
+				g_bConsoleSound[iClient] = false;
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Enable");
+				SetClientCookie(iClient, g_hConsoleSoundCookie, "0");
+			}else if(StrContains(sOption, "vol") >= 0)
+			{
+				g_bConsoleSound[iClient] = false;
+				SetClientCookie(iClient, g_hConsoleSoundCookie, "0");
+				g_iVolume[iClient] = StringToInt(sOption[4]);
+				SetClientCookie(iClient, g_hConsoleCookie_Volume, sOption[4]);
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Volume", g_iVolume[iClient]);
+				//Client_UpdateMusics(iClient);
+			}
+			ConsoleMenu(iClient);
+		}
+	}
+}
+
+/*
 public void PrefMenu(int client, CookieMenuAction actions, any info, char[] buffer, int maxlen)
 {
 	if (actions == CookieMenuAction_DisplayOption)
@@ -109,7 +205,7 @@ void CMD_ConsoleSound(int client)
 		}
 	}
 }
-
+*/
 public APLRes AskPluginLoad2(Handle myself, bool late, char [] error, int err_max)
 {
 	if(GetEngineVersion() == Engine_CSGO)
@@ -178,6 +274,49 @@ public void SendHudMsg(int client, char[] szMessage)
 	ShowSyncHudText(client, HudSync, szMessage);
 }*/
 
+public Action Command_Console(int iClient, int iArgs)
+{
+	if(IsClientConnected(iClient) && IsClientInGame(iClient))
+	{
+		if(iArgs >= 1)
+		{
+			char sArg[6];
+			GetCmdArg(1, sArg, sizeof(sArg));
+			int iVolume = StringToInt(sArg);
+			if(StrEqual(sArg, "disallow", false) || StrEqual(sArg, "off", false) || iVolume <= 0)
+			{
+				g_bConsoleSound[iClient] = true;
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Disable");
+				SetClientCookie(iClient, g_hConsoleSoundCookie, "1");
+				//Client_StopSound(iClient);
+				return Plugin_Handled;
+			}else if(StrEqual(sArg, "allow", false) || StrEqual(sArg, "on", false))
+			{
+				//if(g_bConsoleSound[iClient]) Client_UpdateMusics(iClient);
+				g_bConsoleSound[iClient] = false;
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Enable");
+				SetClientCookie(iClient, g_hConsoleSoundCookie, "0");
+				return Plugin_Handled;
+			}else
+			{
+				if(iVolume > 100) iVolume = 100;
+				g_bConsoleSound[iClient] = false;
+				SetClientCookie(iClient, g_hConsoleSoundCookie, "0");
+				g_iVolume[iClient] = iVolume;
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Volume", g_iVolume[iClient]);
+				char sVolume[8];
+				IntToString(g_iVolume[iClient], sVolume, sizeof(sVolume));
+				SetClientCookie(iClient, g_hConsoleCookie_Volume, sVolume);
+				//Client_UpdateMusics(iClient);
+				return Plugin_Handled;
+			}
+		}
+
+		ConsoleMenu(iClient);
+	}
+	return Plugin_Handled;
+}
+
 public Action SayConsole(int client, int args)
 {
 	
@@ -211,6 +350,8 @@ public Action SayConsole(int client, int args)
 			x=0.2;
 		}
 		
+		
+		
 		for (client = 1; client <= MaxClients; client++) 
 		{
 			if (IsClientInGame(client)) 
@@ -223,10 +364,10 @@ public Action SayConsole(int client, int args)
 				KvJumpToKey(kv, buffer);
 				SetHudTextParams(-1.0, x, 1.65, 0, 255, 0, 255, 2, 0.01, 0.02, 0.02);
 				ShowHudText(client, -1, "%s", buffer);
-
+				float fPlayVolume = float(g_iVolume[client])/100;
 				if (g_bConsoleSound[client] == false)
 				{
-				EmitSoundToClient(client, "music/AIF/CMSL.mp3", _, _, _, _,0.5);
+					EmitSoundToClient(client, "music/AIF/CMSL.mp3", _, _, _, _,fPlayVolume);
 				}
 				else EmitSoundToClient(client, "*/common/talk.wav");
 			
