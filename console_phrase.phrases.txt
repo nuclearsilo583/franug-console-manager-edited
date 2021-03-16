@@ -1,0 +1,66 @@
+"Phrases"
+{
+	"Console Tag"
+	{
+		"en"	"{lightblue}[{green}Console{lightblue}]{default}"
+	}
+
+	"Console Tag Menu"
+	{
+		"en"	"[Console Volume]"
+	}
+	
+	"Console Cookie Menu"
+	{
+		"en"	"Console Volume Control"
+	}
+
+	"Console Text Enable"
+	{
+		"en"	"Console sound is {lightgreen}Enabled{default}."
+	}
+
+	"Console Text Disable"
+	{
+		"en"	"Console sound is {red}Disabled{default}."
+	}
+	
+	"Console Hud Text Enable"
+	{
+		"en"	"Console Hud is {lightgreen}Enabled{default}."
+	}
+
+	"Console Enabled"
+	{
+		"en"	"Enabled"
+	}
+
+	"Console Disabled"
+	{
+		"en"	"Disabled"
+	}
+
+	"Console Menu Title"
+	{
+		"en"	"Console Volume Controle Menu"
+	}
+
+	"Console Menu AdjustDesc"
+	{
+		"en"	"You can use volume control instead of fully stopping\nFor adjust volume is \"!console <volume>\""
+	}
+
+	"Console Menu Music"
+	{
+		"#format"	"{1:T}"
+
+		"en"	"Console: {1}"
+	}
+
+	"Console Menu Vol"
+	{
+		"#format"	"{1:d}"
+
+		"en"	"Volume: {1}"
+	}
+}
