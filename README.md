@@ -1,5 +1,6 @@
 # franug-console-manager-edited
 My edited of franug console manager
+Missing #include <DynamicChannels> ? go here https://github.com/Vauff/DynamicChannels
 
 # Current version 2.0.0
 
