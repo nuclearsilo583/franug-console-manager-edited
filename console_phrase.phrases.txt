@@ -1,5 +1,23 @@
 "Phrases"
 {
+	"Console Hud Music"
+	{
+		"#format"	"{1:T}"
+		"en"	"Hud: {1}"
+	}
+	
+	"Console Hud Text Disable"
+	{
+		"en"	"Console Hud is {red}Disabled{default}."
+	}
+
+	"Console Text Volume"
+	{
+		"#format"	"{1:d}"
+
+		"en"	"Console sound is {lightgreen}Enabled{default}. Volume: {lightgreen}{1}"
+	}
+	
 	"Console Tag"
 	{
 		"en"	"{lightblue}[{green}Console{lightblue}]{default}"

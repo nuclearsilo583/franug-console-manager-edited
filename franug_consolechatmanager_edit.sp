@@ -28,7 +28,7 @@
 
 #pragma newdecls required // let's go new syntax! 
 
-#define VERSION "2.0.0"
+#define VERSION "2.1.0"
 
 //Handle kv;
 //char Path[PLATFORM_MAX_PATH];
@@ -39,8 +39,10 @@ int j=0;
 int		g_iVolume[MAXPLAYERS + 1] = {100, ...};
 
 Handle g_hConsoleSoundCookie;
+Handle g_hConsoleHudCookie;
 Handle g_hConsoleCookie_Volume = INVALID_HANDLE;
 bool g_bConsoleSound[MAXPLAYERS + 1];
+bool g_bConsoleHud[MAXPLAYERS + 1];
 
 int number;
 int g_roundStartedTime;
@@ -67,6 +69,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_console", Command_Console, "Brings up the console menu");
 	
 	g_hConsoleSoundCookie = RegClientCookie("Console_Sound", "Console Sound", CookieAccess_Private);
+	g_hConsoleHudCookie = RegClientCookie("Console_Hud", "Console Hud", CookieAccess_Private);
 	g_hConsoleCookie_Volume	= RegClientCookie("cookie_map_music_volume", "Disable Map Music Volume", CookieAccess_Private);
 	SetCookieMenuItem(ItemCookieMenu, 0, "Console Volume Control");
 	
@@ -103,6 +106,9 @@ public void OnClientCookiesCached(int client)
 	g_bConsoleSound[client] = (sValue[0] != '\0' && StringToInt(sValue));
 	//g_bConsoleSound[client] = view_as<bool>(StringToInt(sValue));
 	
+	GetClientCookie(client, g_hConsoleHudCookie, sValue, sizeof(sValue));
+	g_bConsoleHud[client] = (sValue[0] != '\0' && StringToInt(sValue));
+	
 	GetClientCookie(client, g_hConsoleCookie_Volume, sValue, sizeof(sValue));
 	if(StrEqual(sValue,""))
 	{
@@ -131,8 +137,11 @@ void ConsoleMenu(int iClient)
 	hMenu.SetTitle(sMenuTranslate);
 	hMenu.ExitBackButton = true;
 	
-	FormatEx(sMenuTranslate, sizeof(sMenuTranslate), "%T \n%T", "Console Menu Music", iClient, g_bConsoleSound[iClient] ? "Console Disabled" : "Console Enabled", iClient, "Console Menu AdjustDesc", iClient);
+	FormatEx(sMenuTranslate, sizeof(sMenuTranslate), "%T", "Console Menu Music", iClient, g_bConsoleSound[iClient] ? "Console Disabled" : "Console Enabled", iClient);
 	hMenu.AddItem(g_bConsoleSound[iClient] ? "enable" : "disable", sMenuTranslate);
+	
+	FormatEx(sMenuTranslate, sizeof(sMenuTranslate), "%T \n%T", "Console Hud Music", iClient, g_bConsoleHud[iClient] ? "Console Disabled" : "Console Enabled", iClient, "Console Menu AdjustDesc", iClient);
+	hMenu.AddItem(g_bConsoleHud[iClient] ? "Hudenable" : "Huddisable", sMenuTranslate);
 
 	FormatEx(sMenuTranslate, sizeof(sMenuTranslate), "%T", "Console Menu Vol", iClient, g_iVolume[iClient]);
 
@@ -162,7 +171,7 @@ public int ConsoleMenuHandler(Menu hMenu, MenuAction hAction, int iClient, int i
 		case MenuAction_Cancel: if(iParam2 == MenuCancel_ExitBack) ShowCookieMenu(iClient);
 		case MenuAction_Select:
 		{
-			char sOption[8];
+			char sOption[64];
 			hMenu.GetItem(iParam2, sOption, sizeof(sOption));
 			if(StrEqual(sOption, "disable"))
 			{
@@ -170,13 +179,29 @@ public int ConsoleMenuHandler(Menu hMenu, MenuAction hAction, int iClient, int i
 				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Disable");
 				SetClientCookie(iClient, g_hConsoleSoundCookie, "1");
 				//Client_StopSound(iClient);
-			}else if(StrEqual(sOption, "enable"))
+			}
+			else if(StrEqual(sOption, "enable"))
 			{
 				//if(g_bConsoleSound[iClient]) Client_UpdateMusics(iClient);
 				g_bConsoleSound[iClient] = false;
 				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Text Enable");
 				SetClientCookie(iClient, g_hConsoleSoundCookie, "0");
-			}else if(StrContains(sOption, "vol") >= 0)
+			}
+			else if(StrEqual(sOption, "Huddisable"))
+			{
+				//if(g_bConsoleSound[iClient]) Client_UpdateMusics(iClient);
+				g_bConsoleHud[iClient] = true;
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Hud Text Enable");
+				SetClientCookie(iClient, g_hConsoleHudCookie, "1");
+			}
+			else if(StrEqual(sOption, "Hudenable"))
+			{
+				//if(g_bConsoleSound[iClient]) Client_UpdateMusics(iClient);
+				g_bConsoleHud[iClient] = false;
+				CPrintToChat(iClient, "%t %t", "Console Tag", "Console Hud Text Enable");
+				SetClientCookie(iClient, g_hConsoleHudCookie, "0");
+			}
+			else if(StrContains(sOption, "vol") >= 0)
 			{
 				g_bConsoleSound[iClient] = false;
 				SetClientCookie(iClient, g_hConsoleSoundCookie, "0");
@@ -525,9 +550,11 @@ public Action SayConsole(int client,char[] command, int args)
 		{
 			if (IsClientInGame(client)) 
 			{
-				SetHudTextParams(-1.0, x, 1.65, 0, 255, 0, 255, 2, 0.01, 0.02, 0.02);
-				ShowHudText(client, channel, "%s", buffer);
-				
+				if (g_bConsoleHud[client] == false)
+				{
+					SetHudTextParams(-1.0, x, 1.65, 0, 255, 0, 255, 2, 0.01, 0.02, 0.02);
+					ShowHudText(client, channel, "%s", buffer);
+				}
 				//Check for client's cookies about the volume sync every time when console chat 
 				float fPlayVolume = float(g_iVolume[client])/100;
 				if (g_bConsoleSound[client] == false)
